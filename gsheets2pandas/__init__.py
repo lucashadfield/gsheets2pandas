@@ -1,1 +1,1 @@
-from .reader import *
+from .reader import GSheetReader, read_gsheet

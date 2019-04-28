@@ -63,11 +63,6 @@ class GSheetReader:
             return DataFrame(sheet_data['values'][1:], columns=sheet_data['values'][0])
         return DataFrame()
 
-    def fetch_spreadsheet_by_sheet_num(self, spreadsheet_id: str, sheet_num: int) -> DataFrame:
-        spreadsheet_info = self.fetch_spreadsheet_info(spreadsheet_id)
-        sheet_name = spreadsheet_info['sheets'][sheet_num]['properties']['title']
-        return self.fetch_spreadsheet_by_sheet_name(spreadsheet_id, sheet_name)
-
 
 def read_gsheet(spreadsheet_id: str,
                 sheet: Optional[Union[str, int]] = None,
