@@ -60,4 +60,6 @@ df = gsheets2pandas.read_gsheet(spreadsheet_id='SHEET_ID_HERE', sheet=0)
 ## To Do
 1. More detailed Google API setup instructions
 2. Add functionality to list available spreadsheets
+3. Support for non-standard data structure in sheets
+4. Expand date parsing functionality
 

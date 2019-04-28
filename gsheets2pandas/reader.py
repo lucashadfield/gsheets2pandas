@@ -3,6 +3,9 @@ from apiclient import discovery
 from httplib2 import Http
 from typing import Optional, Union
 import os
+import io
+import csv
+import pandas
 from pandas.core.frame import DataFrame
 
 CLIENT_SECRET_PATH = '~/.gsheets2pandas/client_secret.json'
@@ -54,19 +57,26 @@ class GSheetReader:
     def _get_service(self):
         return discovery.build('sheets', 'v4', http=self.credentials.authorize(Http()))
 
+    def _sheet_data_to_dataframe(self, data, parse_dates=True):
+        with io.StringIO() as buf:
+            csv.writer(buf).writerows(data)
+            buf.seek(0, 0)
+            return pandas.read_csv(buf, parse_dates=list(range(len(data[0]))) if parse_dates else False)
+
     def fetch_spreadsheet_info(self, spreadsheet_id):
         return self.service.spreadsheets().get(spreadsheetId=spreadsheet_id).execute()
 
-    def fetch_spreadsheet_by_sheet_name(self, spreadsheet_id: str, sheet_name: str) -> DataFrame:
+    def fetch_spreadsheet_by_sheet_name(self, spreadsheet_id: str, sheet_name: str, parse_dates: bool = True) -> DataFrame:
         sheet_data = self.service.spreadsheets().values().get(spreadsheetId=spreadsheet_id, range=sheet_name).execute()
         if 'values' in sheet_data:
-            return DataFrame(sheet_data['values'][1:], columns=sheet_data['values'][0])
+            return self._sheet_data_to_dataframe(sheet_data['values'], parse_dates)
         return DataFrame()
 
 
 def read_gsheet(spreadsheet_id: str,
                 sheet: Optional[Union[str, int]] = None,
                 gsheet_reader: Optional[GSheetReader] = None,
+                parse_dates: bool = True,
                 **gsheet_kwargs) -> Union[DataFrame, tuple]:
 
     if gsheet_reader is None:
@@ -91,7 +101,7 @@ def read_gsheet(spreadsheet_id: str,
 
     spreadsheets = []
     for sh in sheets:
-        spreadsheet = gsheet_reader.fetch_spreadsheet_by_sheet_name(spreadsheet_id, sh)
+        spreadsheet = gsheet_reader.fetch_spreadsheet_by_sheet_name(spreadsheet_id, sh, parse_dates)
         if not spreadsheet.empty:
             spreadsheets.append(spreadsheet)
 
