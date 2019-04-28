@@ -1,4 +1,5 @@
-# gsheets2pandas - python interface for reading Google Sheets into pandas DataFrames
+# gsheets2pandas
+### python interface for reading Google Sheets into pandas DataFrames
 
 [![Python 3.6](https://img.shields.io/badge/python-3.6+-blue.svg)](#)
 
@@ -11,7 +12,7 @@ This assumes you are running Jupyter locally on port 8888. If not, adjust the st
 1. Go to: https://console.developers.google.com/apis
 2. Create a new project
 3. Find and enable "Google Sheets API"
-4. Create Credentials → `OAuth client ID`
+4. Create Credentials - `OAuth client ID`
 5. Add http://localhost:8888 and http://localhost:8080 to list of "Authorised JavaScript origins"
 6. Add http://localhost:8888/ and http://localhost:8080/ to list of "Authorised redirect URIs" **Note: trailing / on each URI**
 7. Save and download as json. Save to `~/.gsheets2pandas/client_secret.json`. If you save it elsewhere you need to either need to set the `CLIENT_SECRET_PATH` environment variable or pass in `client_secret_path` when using gsheets2pandas
