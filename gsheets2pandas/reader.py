@@ -1,16 +1,15 @@
 from oauth2client import file, client, tools
 from apiclient import discovery
 from httplib2 import Http
-from typing import Optional, Union
+from typing import Optional, Union, List
 import os
-import io
-import csv
-import pandas
 from pandas.core.frame import DataFrame
+from pandas import Timestamp, Timedelta
 
 CLIENT_SECRET_PATH = '~/.gsheets2pandas/client_secret.json'
 CLIENT_CREDENTIALS_PATH = '~/.gsheets2pandas/client_credentials.json'
 SCOPE = 'https://www.googleapis.com/auth/spreadsheets.readonly'
+FIELDS = 'sheets/data/rowData/values(effectiveValue,effectiveFormat)'
 
 
 class GSheetReader:
@@ -41,7 +40,7 @@ class GSheetReader:
     def __repr__(self):
         return f'{self.__class__.__name__}({self.client_secret_path}, {self.client_credentials_path})'
 
-    def _get_credentials(self):
+    def _get_credentials(self) -> client.OAuth2Credentials:
         store = file.Storage(os.path.expanduser(self.client_credentials_path))
         credentials = store.get()
 
@@ -50,62 +49,74 @@ class GSheetReader:
 
         return credentials
 
-    def _refresh_credentials(self, store):
+    def _refresh_credentials(self, store: file.Storage) -> client.OAuth2Credentials:
         flow = client.flow_from_clientsecrets(os.path.expanduser(self.client_secret_path), scope=SCOPE)
         return tools.run_flow(flow, store, http=Http())
 
-    def _get_service(self):
+    def _get_service(self) -> discovery.Resource:
         return discovery.build('sheets', 'v4', http=self.credentials.authorize(Http()))
 
-    def _sheet_data_to_dataframe(self, data, parse_dates=True):
-        with io.StringIO() as buf:
-            csv.writer(buf).writerows(data)
-            buf.seek(0, 0)
-            return pandas.read_csv(buf, parse_dates=list(range(len(data[0]))) if parse_dates else False)
+    @staticmethod
+    def _timestamp_from_float(f: Union[int, float]) -> Timestamp:
+        return Timestamp(1899, 12, 30) + Timedelta(days=f)
 
-    def fetch_spreadsheet_info(self, spreadsheet_id):
+    def _extract_cell_value(self, cell: dict) -> Union[int, float, bool, str, Timestamp]:
+        try:
+            cell_type, cell_value = list(cell['effectiveValue'].items())[0]
+        except KeyError:
+            cell_value = None
+        else:
+            if cell_type == 'numberValue':
+                try:
+                    dt_type = cell['effectiveFormat']['numberFormat']['type']
+                    if dt_type == 'DATE_TIME' or dt_type == 'DATE':
+                        cell_value = self._timestamp_from_float(cell_value)
+                except KeyError:
+                    pass
+
+        return cell_value
+
+    def _sheet_data_to_dataframe(self, data: list, header=True) -> DataFrame:
+        data_list = [[self._extract_cell_value(cell) for cell in row['values']] for row in data]
+
+        return DataFrame(data_list[1:], columns=data_list[0]) if header else DataFrame(data_list)
+
+    def fetch_spreadsheet(self, spreadsheet_id: str, sheet_name: Optional[str] = None, header: bool = True) -> List[DataFrame]:
+        spreadsheet_data = self.service.spreadsheets().get(
+            spreadsheetId=spreadsheet_id,
+            ranges=sheet_name,
+            fields=FIELDS
+        ).execute()
+
+        return [self._sheet_data_to_dataframe(s['data'][0]['rowData'], header) if s['data'][0] else DataFrame()
+                for s in spreadsheet_data['sheets']]
+
+    def fetch_spreadsheet_info(self, spreadsheet_id: str) -> dict:
         return self.service.spreadsheets().get(spreadsheetId=spreadsheet_id).execute()
-
-    def fetch_spreadsheet_by_sheet_name(self, spreadsheet_id: str, sheet_name: str, parse_dates: bool = True) -> DataFrame:
-        sheet_data = self.service.spreadsheets().values().get(spreadsheetId=spreadsheet_id, range=sheet_name).execute()
-        if 'values' in sheet_data:
-            return self._sheet_data_to_dataframe(sheet_data['values'], parse_dates)
-        return DataFrame()
 
 
 def read_gsheet(spreadsheet_id: str,
                 sheet: Optional[Union[str, int]] = None,
+                header: bool = True,
                 gsheet_reader: Optional[GSheetReader] = None,
-                parse_dates: bool = True,
                 **gsheet_kwargs) -> Union[DataFrame, tuple]:
 
     if gsheet_reader is None:
         gsheet_reader = GSheetReader(**gsheet_kwargs)
 
-    sheets_info = gsheet_reader.fetch_spreadsheet_info(spreadsheet_id)['sheets']
-    sheet_names = [s['properties']['title'] for s in sheets_info]
+    if sheet is not None:
+        sheet_names = [s['properties']['title'] for s in gsheet_reader.fetch_spreadsheet_info(spreadsheet_id)['sheets']]
+        if isinstance(sheet, str):
+            if sheet not in sheet_names:
+                raise KeyError(f"sheet '{sheet}' not found. Available sheets are: {tuple(sheet_names)}")
+        elif isinstance(sheet, int):
+            sheet = sheet_names[sheet]
+        else:
+            raise TypeError(f'sheet needs to of type Optional[Union[str, int]]')
 
-    if sheet is None:
-        sheets = sheet_names
-    elif isinstance(sheet, str):
-        if sheet not in sheet_names:
-            raise KeyError(f"sheet '{sheet}' not found. Available sheets are: {tuple(sheet_names)}")
-        sheets = [sheet]
-    elif isinstance(sheet, int):
-        sheets = [sheet_names[sheet]]
-    else:
-        raise TypeError(f'sheet needs to of type Optional[Union[str, int]]')
-
-    if len(sheets) == 1:
-        return gsheet_reader.fetch_spreadsheet_by_sheet_name(spreadsheet_id, sheets[0])
-
-    spreadsheets = []
-    for sh in sheets:
-        spreadsheet = gsheet_reader.fetch_spreadsheet_by_sheet_name(spreadsheet_id, sh, parse_dates)
-        if not spreadsheet.empty:
-            spreadsheets.append(spreadsheet)
+    spreadsheets = gsheet_reader.fetch_spreadsheet(spreadsheet_id, sheet, header)
 
     if len(spreadsheets) > 1:
-        return tuple(spreadsheets)
-    elif len(spreadsheets) == 1:
-        return spreadsheets[0]
+        spreadsheets = [s for s in spreadsheets if not s.empty]
+
+    return tuple(spreadsheets) if len(spreadsheets) > 1 else spreadsheets[0]

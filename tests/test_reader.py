@@ -1,5 +1,6 @@
 from gsheets2pandas.reader import GSheetReader, read_gsheet
 from pandas.core.frame import DataFrame
+from pandas import Timestamp
 import os
 import pytest
 
@@ -33,7 +34,13 @@ def test_gsheetreader_kwargs():
 def test_1_sheet_0_empty():
     df = read_gsheet(SPREADSHEET_1_SHEET_0_EMPTY, gsheet_reader=None)
     assert isinstance(df, DataFrame)
-    assert df.shape == (4, 3)
+    assert df.shape == (6, 4)
+
+
+def test_1_sheet_0_empty_no_header():
+    df = read_gsheet(SPREADSHEET_1_SHEET_0_EMPTY, header=False, gsheet_reader=None)
+    assert isinstance(df, DataFrame)
+    assert df.shape == (7, 4)
 
 
 def test_3_sheet_0_empty(gsheet_reader):
@@ -91,3 +98,9 @@ def test_invalid_sheet_index(gsheet_reader):
 def test_invalid_sheet_argument_type(gsheet_reader):
     with pytest.raises(TypeError):
         read_gsheet(SPREADSHEET_1_SHEET_0_EMPTY, 1.2, gsheet_reader=gsheet_reader)
+
+
+def test_types(gsheet_reader):
+    s = read_gsheet(SPREADSHEET_1_SHEET_0_EMPTY, gsheet_reader=gsheet_reader)['types']
+    for x, target_type in zip(s, [int, float, bool, str, Timestamp]):
+        assert isinstance(x, target_type)
