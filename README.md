@@ -19,7 +19,8 @@ This assumes you are running Jupyter locally on port 8888. If not, adjust the be
 
 #### gsheets2pandas setup
 1. `git clone https://github.com/lucashadfield/gsheets2pandas.git`
-2. `pip install gsheets2pandas`
+2. `cd gsheets2pandas`
+2. `pip install .`
 
 
 
@@ -61,4 +62,5 @@ df = gsheets2pandas.read_gsheet(spreadsheet_id='SHEET_ID_HERE', sheet=0)
 1. More detailed Google API setup instructions
 2. Add functionality to list available spreadsheets
 3. Support for non-standard data structure in sheets
+4. Better tests using mocks
 
