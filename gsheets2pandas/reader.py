@@ -109,7 +109,7 @@ def read_gsheet(spreadsheet_id: str,
         sheet_names = [s['properties']['title'] for s in gsheet_reader.fetch_spreadsheet_info(spreadsheet_id)['sheets']]
         if isinstance(sheet, str):
             if sheet not in sheet_names:
-                raise KeyError(f"sheet '{sheet}' not found. Available sheets are: {tuple(sheet_names)}")
+                raise KeyError(f"sheet '{sheet}' not found. Available sheets are: {list(sheet_names)}")
         elif isinstance(sheet, int):
             sheet = sheet_names[sheet]
         else:
