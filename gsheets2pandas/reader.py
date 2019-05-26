@@ -5,6 +5,7 @@ from typing import Optional, Union, List
 import os
 from pandas.core.frame import DataFrame
 from pandas import Timestamp, Timedelta
+import io
 
 CLIENT_SECRET_PATH = '~/.gsheets2pandas/client_secret.json'
 CLIENT_CREDENTIALS_PATH = '~/.gsheets2pandas/client_credentials.json'

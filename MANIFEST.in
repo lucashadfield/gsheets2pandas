@@ -1,0 +1,2 @@
+include tests/resources/gsheets_info.json
+include tests/resources/gsheets_data.json
