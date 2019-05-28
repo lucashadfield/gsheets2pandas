@@ -109,15 +109,15 @@ def read_gsheet(spreadsheet_id: str,
         sheet_names = [s['properties']['title'] for s in gsheet_reader.fetch_spreadsheet_info(spreadsheet_id)['sheets']]
         if isinstance(sheet, str):
             if sheet not in sheet_names:
-                raise KeyError(f"sheet '{sheet}' not found. Available sheets are: {list(sheet_names)}")
+                raise KeyError(f"sheet '{sheet}' not found. Available sheets are: {sheet_names}")
         elif isinstance(sheet, int):
             sheet = sheet_names[sheet]
         else:
             raise TypeError(f'sheet needs to of type Optional[Union[str, int]]')
 
-    spreadsheets = gsheet_reader.fetch_spreadsheet(spreadsheet_id, sheet, header)
+    spreadsheet = gsheet_reader.fetch_spreadsheet(spreadsheet_id, sheet, header)
 
-    if len(spreadsheets) > 1:
-        spreadsheets = [s for s in spreadsheets if not s.empty]
+    if len(spreadsheet) > 1:
+        spreadsheet = [s for s in spreadsheet if not s.empty]
 
-    return tuple(spreadsheets) if len(spreadsheets) > 1 else spreadsheets[0]
+    return tuple(spreadsheet) if len(spreadsheet) > 1 else spreadsheet[0]
