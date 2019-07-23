@@ -14,7 +14,7 @@ PANDAS_START_TIME = Timestamp(1899, 12, 30)
 
 
 class GSheetReader:
-    '''
+    """
     Returns an authenticated Google Sheets reader based on configured
     client_secret.json and client_credentials.json files
 
@@ -27,7 +27,7 @@ class GSheetReader:
     If omitted, then looks in:
                 1. CLIENT_CREDENTIALS_PATH environment variable
                 2. ~/.pandas_read_gsheet/client_credentials.json
-    '''
+    """
 
     def __init__(
         self,
