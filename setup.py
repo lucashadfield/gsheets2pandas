@@ -1,16 +1,16 @@
 from setuptools import setup, find_packages
 
 setup(
-    name="gsheets2pandas",
-    version="1.2.1",
-    author="Lucas Hadfield",
+    name='gsheets2pandas',
+    version='1.2.2',
+    author='Lucas Hadfield',
     packages=find_packages(),
     install_requires=[
-        "pandas",
-        "oauth2client",
-        "google-api-python-client",
-        "httplib2",
-        "pytest",
+        'pandas',
+        'oauth2client',
+        'google-api-python-client',
+        'httplib2',
+        'pytest',
     ],
     include_package_data=True,
 )
