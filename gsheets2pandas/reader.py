@@ -51,7 +51,7 @@ class GSheetReader:
         return f'{self.__class__.__name__}({self.client_secret_path}, {self.client_credentials_path})'
 
     @property
-    @lru_cache()
+    @lru_cache(maxsize=1)
     def credentials(self) -> client.OAuth2Credentials:
         store = file.Storage(os.path.expanduser(self.client_credentials_path))
         credentials = store.get()
@@ -68,7 +68,7 @@ class GSheetReader:
         return tools.run_flow(flow, store, http=Http())
 
     @property
-    @lru_cache()
+    @lru_cache(maxsize=1)
     def service(self) -> discovery.Resource:
         return discovery.build('sheets', 'v4', http=self.credentials.authorize(Http()))
 
