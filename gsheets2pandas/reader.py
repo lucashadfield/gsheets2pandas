@@ -5,6 +5,7 @@ from typing import Optional, Union, List
 import os
 from pandas.core.frame import DataFrame
 from pandas import Timestamp, Timedelta
+from functools import lru_cache
 
 CLIENT_SECRET_PATH = '~/.gsheets2pandas/client_secret.json'
 CLIENT_CREDENTIALS_PATH = '~/.gsheets2pandas/client_credentials.json'
@@ -46,13 +47,12 @@ class GSheetReader:
             else os.environ.get('CLIENT_CREDENTIALS_PATH', CLIENT_CREDENTIALS_PATH)
         )
 
-        self.credentials = self._get_credentials()
-        self.service = self._get_service()
-
     def __repr__(self):
         return f'{self.__class__.__name__}({self.client_secret_path}, {self.client_credentials_path})'
 
-    def _get_credentials(self) -> client.OAuth2Credentials:
+    @property
+    @lru_cache()
+    def credentials(self) -> client.OAuth2Credentials:
         store = file.Storage(os.path.expanduser(self.client_credentials_path))
         credentials = store.get()
 
@@ -67,7 +67,9 @@ class GSheetReader:
         )
         return tools.run_flow(flow, store, http=Http())
 
-    def _get_service(self) -> discovery.Resource:
+    @property
+    @lru_cache()
+    def service(self) -> discovery.Resource:
         return discovery.build('sheets', 'v4', http=self.credentials.authorize(Http()))
 
     @staticmethod
@@ -122,36 +124,35 @@ class GSheetReader:
     def fetch_spreadsheet_info(self, spreadsheet_id: str) -> dict:
         return self.service.spreadsheets().get(spreadsheetId=spreadsheet_id).execute()
 
+    def read_gsheet(
+        self,
+        spreadsheet_id: str,
+        sheet: Optional[Union[str, int]] = None,
+        header: bool = True,
+    ) -> Union[DataFrame, tuple]:
 
-def read_gsheet(
-    spreadsheet_id: str,
-    sheet: Optional[Union[str, int]] = None,
-    header: bool = True,
-    gsheet_reader: Optional[GSheetReader] = None,
-    **gsheet_kwargs,
-) -> Union[DataFrame, tuple]:
+        if sheet is not None:
+            sheet_names = [
+                s['properties']['title']
+                for s in self.fetch_spreadsheet_info(spreadsheet_id)['sheets']
+            ]
+            if isinstance(sheet, str):
+                if sheet not in sheet_names:
+                    raise KeyError(
+                        f'sheet {sheet} not found. Available sheets are: {sheet_names}'
+                    )
+            elif isinstance(sheet, int):
+                sheet = sheet_names[sheet]
+            else:
+                raise TypeError(f'sheet needs to of type Optional[Union[str, int]]')
 
-    if gsheet_reader is None:
-        gsheet_reader = GSheetReader(**gsheet_kwargs)
+        spreadsheet = self.fetch_spreadsheet(spreadsheet_id, sheet, header)
 
-    if sheet is not None:
-        sheet_names = [
-            s['properties']['title']
-            for s in gsheet_reader.fetch_spreadsheet_info(spreadsheet_id)['sheets']
-        ]
-        if isinstance(sheet, str):
-            if sheet not in sheet_names:
-                raise KeyError(
-                    f'sheet {sheet} not found. Available sheets are: {sheet_names}'
-                )
-        elif isinstance(sheet, int):
-            sheet = sheet_names[sheet]
-        else:
-            raise TypeError(f'sheet needs to of type Optional[Union[str, int]]')
+        if len(spreadsheet) > 1:
+            spreadsheet = [s for s in spreadsheet if not s.empty]
 
-    spreadsheet = gsheet_reader.fetch_spreadsheet(spreadsheet_id, sheet, header)
+        return tuple(spreadsheet) if len(spreadsheet) > 1 else spreadsheet[0]
 
-    if len(spreadsheet) > 1:
-        spreadsheet = [s for s in spreadsheet if not s.empty]
 
-    return tuple(spreadsheet) if len(spreadsheet) > 1 else spreadsheet[0]
+_instance = GSheetReader()
+read_gsheet = _instance.read_gsheet

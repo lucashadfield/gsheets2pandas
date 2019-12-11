@@ -20,7 +20,7 @@ This assumes you are running Jupyter locally on port 8888. If not, adjust the be
 #### gsheets2pandas setup
 1. `git clone https://github.com/lucashadfield/gsheets2pandas.git`
 2. `cd gsheets2pandas`
-2. `pip install .`
+3. `pip install .`
 
 
 
